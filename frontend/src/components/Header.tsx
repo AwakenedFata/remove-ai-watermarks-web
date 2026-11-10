@@ -1,6 +1,6 @@
 import type React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Sun, Moon, Globe, Wand2, Layers, SearchCheck } from 'lucide-react';
+import { Sun, Moon, Globe, Wand2, Layers, SearchCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 interface HeaderProps {
@@ -23,13 +23,13 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
         <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
           <div className="flex items-center space-x-3">
-            <motion.div
-              whileHover={{ rotate: 12, scale: 1.05 }}
+            <motion.img
+              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white cursor-pointer"
-            >
-              <Sparkles className="w-5 h-5" />
-            </motion.div>
+              src="/aiwmremoverlogo.png"
+              alt="Logo"
+              className="w-10 h-10 rounded-xl object-contain cursor-pointer shadow-sm"
+            />
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-bold text-lg text-slate-900 dark:text-white tracking-tight">

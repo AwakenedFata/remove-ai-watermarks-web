@@ -41,7 +41,7 @@ function MainLayout() {
           <p>{t('footerCopy')}</p>
           <div className="flex items-center space-x-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>Clean AI Engine • Production Ready</span>
+            <span>AI Watermark Remover</span>
           </div>
         </div>
       </footer>
