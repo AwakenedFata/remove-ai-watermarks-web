@@ -35,9 +35,6 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                 <span className="font-bold text-lg text-slate-900 dark:text-white tracking-tight">
                   {t('appTitle')}
                 </span>
-                <span className="hidden sm:inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                  {t('systemReady')}
-                </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
                 {t('appSubtitle')}
