@@ -25,42 +25,30 @@ export const VisualRegionSelector: React.FC<VisualRegionSelectorProps> = ({
 }) => {
   const { t } = useApp();
   const imgRef = useRef<HTMLImageElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState<{ x: number; y: number } | null>(null);
   const [currentPos, setCurrentPos] = useState<{ x: number; y: number } | null>(null);
-  const [imgDimensions, setImgDimensions] = useState<{ width: number; height: number; naturalW: number; naturalH: number }>({
-    width: 1,
-    height: 1,
-    naturalW: 1,
-    naturalH: 1,
-  });
+  const [naturalSize, setNaturalSize] = useState<{ w: number; h: number }>({ w: 1, h: 1 });
 
-  // Update rendered dimensions on load or resize
+  // Update image natural dimensions
   const updateDimensions = useCallback(() => {
     if (!imgRef.current) return;
-    const { clientWidth, clientHeight, naturalWidth, naturalHeight } = imgRef.current;
-    if (clientWidth > 0 && clientHeight > 0) {
-      setImgDimensions({
-        width: clientWidth,
-        height: clientHeight,
-        naturalW: naturalWidth || clientWidth,
-        naturalH: naturalHeight || clientHeight,
-      });
+    const { naturalWidth, naturalHeight } = imgRef.current;
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      setNaturalSize({ w: naturalWidth, h: naturalHeight });
     }
   }, []);
 
   useEffect(() => {
     updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
   }, [updateDimensions, imageSrc]);
 
-  // Coordinates helper relative to image element
+  // Coordinates helper relative to the exact overlay container
   const getPointerPos = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!imgRef.current) return { x: 0, y: 0 };
-    const rect = imgRef.current.getBoundingClientRect();
+    if (!overlayRef.current) return { x: 0, y: 0 };
+    const rect = overlayRef.current.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
 
@@ -84,32 +72,39 @@ export const VisualRegionSelector: React.FC<VisualRegionSelectorProps> = ({
   };
 
   const handleEnd = () => {
-    if (!isDrawing || !startPos || !currentPos) {
+    if (!isDrawing || !startPos || !currentPos || !overlayRef.current) {
       setIsDrawing(false);
       setStartPos(null);
       setCurrentPos(null);
       return;
     }
 
+    const rect = overlayRef.current.getBoundingClientRect();
     const minX = Math.min(startPos.x, currentPos.x);
     const minY = Math.min(startPos.y, currentPos.y);
     const w = Math.abs(currentPos.x - startPos.x);
     const h = Math.abs(currentPos.y - startPos.y);
 
-    // Only add if box is at least 8x8 pixels visually
-    if (w >= 8 && h >= 8) {
-      const scaleX = imgDimensions.naturalW / imgDimensions.width;
-      const scaleY = imgDimensions.naturalH / imgDimensions.height;
+    // Only add if box is at least 6x6 pixels on screen
+    if (w >= 6 && h >= 6 && rect.width > 0 && rect.height > 0) {
+      const scaleX = naturalSize.w / rect.width;
+      const scaleY = naturalSize.h / rect.height;
 
-      const newBox: BoundingBox = {
-        id: Math.random().toString(36).substring(2, 9),
-        x: Math.round(minX * scaleX),
-        y: Math.round(minY * scaleY),
-        w: Math.round(w * scaleX),
-        h: Math.round(h * scaleY),
-      };
+      const actualX = Math.max(0, Math.round(minX * scaleX));
+      const actualY = Math.max(0, Math.round(minY * scaleY));
+      const actualW = Math.min(naturalSize.w - actualX, Math.round(w * scaleX));
+      const actualH = Math.min(naturalSize.h - actualY, Math.round(h * scaleY));
 
-      onBoxesChange([...boxes, newBox]);
+      if (actualW > 4 && actualH > 4) {
+        const newBox: BoundingBox = {
+          id: Math.random().toString(36).substring(2, 9),
+          x: actualX,
+          y: actualY,
+          w: actualW,
+          h: actualH,
+        };
+        onBoxesChange([...boxes, newBox]);
+      }
     }
 
     setIsDrawing(false);
@@ -128,10 +123,12 @@ export const VisualRegionSelector: React.FC<VisualRegionSelectorProps> = ({
 
   // Convert natural image box to display percentages
   const getBoxStyle = (box: BoundingBox) => {
-    const left = (box.x / imgDimensions.naturalW) * 100;
-    const top = (box.y / imgDimensions.naturalH) * 100;
-    const width = (box.w / imgDimensions.naturalW) * 100;
-    const height = (box.h / imgDimensions.naturalH) * 100;
+    const nw = naturalSize.w || 1;
+    const nh = naturalSize.h || 1;
+    const left = (box.x / nw) * 100;
+    const top = (box.y / nh) * 100;
+    const width = (box.w / nw) * 100;
+    const height = (box.h / nh) * 100;
     return {
       left: `${left}%`,
       top: `${top}%`,
@@ -142,15 +139,24 @@ export const VisualRegionSelector: React.FC<VisualRegionSelectorProps> = ({
 
   // Active drawing box style
   const getActiveBoxStyle = () => {
-    if (!startPos || !currentPos) return null;
-    const left = Math.min(startPos.x, currentPos.x);
-    const top = Math.min(startPos.y, currentPos.y);
-    const width = Math.abs(currentPos.x - startPos.x);
-    const height = Math.abs(currentPos.y - startPos.y);
-    return { left, top, width, height };
+    if (!startPos || !currentPos || !overlayRef.current) return null;
+    const rect = overlayRef.current.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+
+    const left = (Math.min(startPos.x, currentPos.x) / rect.width) * 100;
+    const top = (Math.min(startPos.y, currentPos.y) / rect.height) * 100;
+    const width = (Math.abs(currentPos.x - startPos.x) / rect.width) * 100;
+    const height = (Math.abs(currentPos.y - startPos.y) / rect.height) * 100;
+
+    return {
+      left: `${left}%`,
+      top: `${top}%`,
+      width: `${width}%`,
+      height: `${height}%`,
+    };
   };
 
-  const activeBox = getActiveBoxStyle();
+  const activeBoxStyle = getActiveBoxStyle();
 
   return (
     <div className="space-y-3">
@@ -161,9 +167,14 @@ export const VisualRegionSelector: React.FC<VisualRegionSelectorProps> = ({
           <span className="font-semibold">
             {t('visualSelectorTitle') || 'Tandai Area Watermark Visual'}
           </span>
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 font-mono">
             {boxes.length} {t('areasMarked') || 'area ditandai'}
           </span>
+          {naturalSize.w > 1 && (
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+              ({naturalSize.w}×{naturalSize.h}px)
+            </span>
+          )}
         </div>
 
         <div className="flex items-center space-x-2">
@@ -180,80 +191,69 @@ export const VisualRegionSelector: React.FC<VisualRegionSelectorProps> = ({
         </div>
       </div>
 
-      {/* Interactive Canvas Area */}
-      <div
-        ref={containerRef}
-        className="relative mx-auto select-none overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-950 shadow-md group touch-none"
-        style={{ cursor: disabled ? 'not-allowed' : 'crosshair' }}
-        onMouseDown={handleStart}
-        onMouseMove={handleMove}
-        onMouseUp={handleEnd}
-        onTouchStart={handleStart}
-        onTouchMove={handleMove}
-        onTouchEnd={handleEnd}
-      >
-        <img
-          ref={imgRef}
-          src={imageSrc}
-          alt="Preview for watermark selection"
-          onLoad={updateDimensions}
-          className="w-full h-auto block max-h-[60vh] object-contain pointer-events-none mx-auto"
-          draggable={false}
-        />
+      {/* Interactive Visual Canvas Container: tightly wraps image with zero letterbox offset */}
+      <div className="flex justify-center w-full p-2 bg-slate-950/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-inner">
+        <div className="relative inline-block max-w-full select-none">
+          <img
+            ref={imgRef}
+            src={imageSrc}
+            alt="Preview for watermark selection"
+            onLoad={updateDimensions}
+            className="block max-w-full max-h-[60vh] w-auto h-auto rounded-lg select-none pointer-events-none"
+            draggable={false}
+          />
 
-        {/* Saved Bounding Boxes */}
-        {boxes.map((box, index) => {
-          const style = getBoxStyle(box);
-          return (
-            <div
-              key={box.id}
-              style={style}
-              className="absolute border-2 border-indigo-500 bg-indigo-500/25 dark:bg-indigo-500/35 backdrop-blur-[1px] transition-all rounded shadow-sm z-20 group/box pointer-events-auto"
-            >
-              {/* Badge info & Delete button */}
-              <div className="absolute -top-6 left-0 flex items-center space-x-1 bg-indigo-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shadow">
-                <span>#{index + 1}</span>
-                <span className="text-[9px] opacity-80">
-                  {box.w}×{box.h}
-                </span>
-                <button
-                  type="button"
-                  onClick={(e) => handleRemoveBox(box.id, e)}
-                  className="ml-1 hover:text-red-300 transition-colors p-0.5"
-                  title="Hapus kotak ini"
-                >
-                  <Trash2 className="w-2.5 h-2.5" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Live Active Dragging Box */}
-        {isDrawing && activeBox && (
+          {/* Transparent interactive drawing overlay matching image pixel-for-pixel */}
           <div
-            style={{
-              left: activeBox.left,
-              top: activeBox.top,
-              width: activeBox.width,
-              height: activeBox.height,
-            }}
-            className="absolute border-2 border-dashed border-indigo-400 bg-indigo-400/30 rounded pointer-events-none z-30 shadow-lg"
+            ref={overlayRef}
+            className="absolute inset-0 cursor-crosshair touch-none select-none z-10"
+            onMouseDown={handleStart}
+            onMouseMove={handleMove}
+            onMouseUp={handleEnd}
+            onTouchStart={handleStart}
+            onTouchMove={handleMove}
+            onTouchEnd={handleEnd}
           >
-            <div className="absolute -top-5 left-0 bg-slate-900/90 text-white text-[9px] font-mono px-1 py-0.5 rounded border border-slate-700">
-              Menyeleksi...
-            </div>
-          </div>
-        )}
+            {/* Saved Bounding Boxes */}
+            {boxes.map((box, index) => {
+              const style = getBoxStyle(box);
+              return (
+                <div
+                  key={box.id}
+                  style={style}
+                  className="absolute border-2 border-indigo-400 bg-indigo-500/35 backdrop-blur-[0.5px] rounded-xs shadow-md z-20 group/box pointer-events-auto transition-all"
+                >
+                  {/* Badge info & Delete button */}
+                  <div className="absolute -top-6 left-0 flex items-center space-x-1 bg-indigo-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shadow whitespace-nowrap">
+                    <span>#{index + 1}</span>
+                    <span className="text-[9px] opacity-85">
+                      {box.w}×{box.h}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => handleRemoveBox(box.id, e)}
+                      className="ml-1 hover:text-red-300 transition-colors p-0.5"
+                      title="Hapus area ini"
+                    >
+                      <Trash2 className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
 
-        {/* Subtle instructions overlay at bottom */}
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-slate-900/85 backdrop-blur-sm text-slate-200 text-[11px] px-3 py-1 rounded-full pointer-events-none border border-slate-700/60 shadow flex items-center space-x-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
-          <Crosshair className="w-3.5 h-3.5 text-indigo-400" />
-          <span>
-            {boxes.length === 0
-              ? (t('visualSelectorHint') || 'Klik & geser (drag) di atas watermark untuk menandai area yang ingin dihapus')
-              : (t('visualSelectorMoreHint') || 'Tandai area lain atau klik tombol Bersihkan Foto')}
-          </span>
+            {/* Live Active Dragging Box */}
+            {isDrawing && activeBoxStyle && (
+              <div
+                style={activeBoxStyle}
+                className="absolute border-2 border-dashed border-indigo-400 bg-indigo-500/30 rounded-xs pointer-events-none z-30 shadow-lg"
+              >
+                <div className="absolute -top-5 left-0 bg-slate-900/90 text-white text-[9px] font-mono px-1 py-0.5 rounded border border-slate-700">
+                  Menyeleksi...
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -262,7 +262,7 @@ export const VisualRegionSelector: React.FC<VisualRegionSelectorProps> = ({
         <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/30 rounded-xl border border-indigo-100 dark:border-indigo-900/60 text-[11px] text-slate-600 dark:text-slate-300">
           <div className="flex items-center space-x-1.5 font-semibold text-indigo-700 dark:text-indigo-400 mb-1.5">
             <Check className="w-3.5 h-3.5" />
-            <span>{t('readyToEraseAreas') || 'Area siap dihapus:'}</span>
+            <span>{t('readyToEraseAreas') || 'Area siap dihapus (neural inpainting):'}</span>
           </div>
           <div className="flex flex-wrap gap-1.5 font-mono">
             {boxes.map((b, i) => (

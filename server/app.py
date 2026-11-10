@@ -158,8 +158,11 @@ async def clean_endpoint(
         elif mode == "ocr":
             # General OCR text / arbitrary watermark detection mode
             import cv2
-            from remove_ai_watermarks.region_eraser import erase
-            from ocr_detector import detect_arbitrary_text_boxes
+            from remove_ai_watermarks.region_eraser import erase, lama_available
+            try:
+                from server.ocr_detector import detect_arbitrary_text_boxes
+            except ImportError:
+                from ocr_detector import detect_arbitrary_text_boxes
 
             detected_boxes = detect_arbitrary_text_boxes(file_path)
             all_boxes = list(detected_boxes) + list(manual_boxes)
@@ -167,7 +170,8 @@ async def clean_endpoint(
             if all_boxes:
                 img = cv2.imread(str(file_path))
                 if img is not None:
-                    erased_img = erase(img, boxes=all_boxes)
+                    inpaint_backend = "lama" if lama_available() else "cv2"
+                    erased_img = erase(img, boxes=all_boxes, backend=inpaint_backend, dilate=8)
                     cv2.imwrite(str(out_path), erased_img)
                     remove_ai_metadata(out_path, out_path)
                     marks = []
@@ -175,7 +179,7 @@ async def clean_endpoint(
                         marks.append(f"Auto OCR Detected Text ({len(detected_boxes)} area)")
                     if manual_boxes:
                         marks.append(f"Visual Selected Boxes ({len(manual_boxes)} area)")
-                    marks.append("AI Metadata Stripped")
+                    marks.append(f"Inpainted with {inpaint_backend.upper()}")
                     removed_marks = marks
                 else:
                     _, removed = raiw.remove_visible(str(file_path), str(out_path))
@@ -188,13 +192,14 @@ async def clean_endpoint(
             # Mode "visible": strips AI visible watermark + any visual boxes + metadata
             if manual_boxes:
                 import cv2
-                from remove_ai_watermarks.region_eraser import erase
+                from remove_ai_watermarks.region_eraser import erase, lama_available
                 img = cv2.imread(str(file_path))
                 if img is not None:
-                    erased_img = erase(img, boxes=manual_boxes)
+                    inpaint_backend = "lama" if lama_available() else "cv2"
+                    erased_img = erase(img, boxes=manual_boxes, backend=inpaint_backend, dilate=8)
                     cv2.imwrite(str(out_path), erased_img)
                     remove_ai_metadata(out_path, out_path)
-                    removed_marks = [f"Visual Marked Regions ({len(manual_boxes)} area) & AI Metadata"]
+                    removed_marks = [f"Visual Marked Regions ({len(manual_boxes)} area) inpainted with {inpaint_backend.upper()}"]
                 else:
                     _, removed = raiw.remove_visible(str(file_path), str(out_path))
                     removed_marks = removed or ["Metadata cleaned (No visible marks found)"]
@@ -249,17 +254,21 @@ async def batch_endpoint(
                 removed = ["AI Metadata stripped"]
             elif mode == "ocr":
                 import cv2
-                from remove_ai_watermarks.region_eraser import erase
-                from ocr_detector import detect_arbitrary_text_boxes
+                from remove_ai_watermarks.region_eraser import erase, lama_available
+                try:
+                    from server.ocr_detector import detect_arbitrary_text_boxes
+                except ImportError:
+                    from ocr_detector import detect_arbitrary_text_boxes
 
                 detected_boxes = detect_arbitrary_text_boxes(in_path)
                 if detected_boxes:
                     img = cv2.imread(str(in_path))
                     if img is not None:
-                        erased_img = erase(img, boxes=detected_boxes)
+                        inpaint_backend = "lama" if lama_available() else "cv2"
+                        erased_img = erase(img, boxes=detected_boxes, backend=inpaint_backend, dilate=8)
                         cv2.imwrite(str(out_path), erased_img)
                         remove_ai_metadata(out_path, out_path)
-                        removed = [f"OCR Detected Text ({len(detected_boxes)} area)", "Metadata stripped"]
+                        removed = [f"OCR Detected Text ({len(detected_boxes)} area)", f"Inpainted with {inpaint_backend.upper()}"]
                     else:
                         _, removed = raiw.remove_visible(str(in_path), str(out_path))
                 else:
