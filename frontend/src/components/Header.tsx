@@ -11,6 +11,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
   const { lang, setLang, theme, toggleTheme, t } = useApp();
 
+  const logoSrc = theme === 'dark' ? '/darkmodelogo.png' : '/lightmodelogo.png';
+
   const navItems = [
     { id: 'single' as const, label: t('tabSingle'), icon: Wand2 },
     { id: 'batch' as const, label: t('tabBatch'), icon: Layers },
@@ -20,15 +22,19 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo & Brand (Full Wordmark) */}
+        <div className="flex items-center justify-between h-18 sm:h-20">
+          {/* Logo & Brand (Dual-mode Wordmark) */}
           <div className="flex items-center">
             <motion.img
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              src="/aiwmremoverlogo.png"
+              key={theme}
+              initial={{ opacity: 0.85 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              src={logoSrc}
               alt="AI Watermark Remover"
-              className="h-9 sm:h-11 w-auto max-w-[200px] sm:max-w-[240px] object-contain cursor-pointer select-none"
+              className="h-11 sm:h-13 md:h-14 w-auto max-w-[240px] sm:max-w-[320px] object-contain cursor-pointer select-none py-1"
             />
           </div>
 

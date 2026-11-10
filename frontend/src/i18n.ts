@@ -87,7 +87,7 @@ export const translations = {
     faqQualityDesc: 'Our smart AI eraser automatically refills the watermark area by blending textures from the surrounding image, keeping your photo sharp and natural.',
 
     // Footer
-    footerCopy: '© 2026 AI Watermark Remover. Fast, private, and runs entirely on your system.'
+    footerCopy: '© 2026 AI Watermark Remover. Fast, private, and runs entirely on your device.'
   },
   id: {
     appTitle: 'AI Watermark Remover',
@@ -175,6 +175,6 @@ export const translations = {
     faqQualityDesc: 'Penghapus pintar kami menambal area watermark dengan membaurkan tekstur alami di sekelilingnya, sehingga foto tetap tajam dan terlihat asli.',
 
     // Footer
-    footerCopy: '© 2026 AI Watermark Remover. Cepat, aman, dan berjalan langsung di komputer Anda.'
+    footerCopy: '© 2026 AI Watermark Remover. Cepat, aman, dan berjalan langsung di perangkat Anda.'
   }
 };
