@@ -1,0 +1,20 @@
+[tool.pyrefly]
+python-interpreter-path = "D:/python.exe"
+search-path = [
+    "D:/Lib/site-packages",
+    "C:/Users/stron/AppData/Roaming/Python/Python312/site-packages",
+    "D:/remove-ai-watermarks-project",
+    "D:/remove-ai-watermarks-project/server"
+]
+ignore-missing-imports = [
+    "torch.*"
+]
+
+[tool.pyright]
+pythonPath = "D:/python.exe"
+extraPaths = [
+    "D:/Lib/site-packages",
+    "C:/Users/stron/AppData/Roaming/Python/Python312/site-packages",
+    "D:/remove-ai-watermarks-project",
+    "D:/remove-ai-watermarks-project/server"
+]

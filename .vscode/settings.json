@@ -1,0 +1,9 @@
+{
+  "python.defaultInterpreterPath": "D:\\python.exe",
+  "python.analysis.extraPaths": [
+    "D:\\Lib\\site-packages",
+    "C:\\Users\\stron\\AppData\\Roaming\\Python\\Python312\\site-packages",
+    "D:\\remove-ai-watermarks-project",
+    "D:\\remove-ai-watermarks-project\\server"
+  ]
+}
