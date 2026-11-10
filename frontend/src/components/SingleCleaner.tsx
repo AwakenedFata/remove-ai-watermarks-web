@@ -12,18 +12,23 @@ import {
   AlertCircle,
   Clock,
   HardDrive,
-  FileCheck
+  FileCheck,
+  ScanText,
+  Crosshair
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { CleanResponse } from '../types';
 import { ImageComparisonSlider } from './ImageComparisonSlider';
+import { VisualRegionSelector, type BoundingBox } from './VisualRegionSelector';
 import { useApp } from '../context/AppContext';
 
 export const SingleCleaner: React.FC = () => {
   const { t } = useApp();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [mode, setMode] = useState<'visible' | 'metadata'>('visible');
+  const [mode, setMode] = useState<'visible' | 'ocr' | 'metadata'>('visible');
+  const [visualBoxes, setVisualBoxes] = useState<BoundingBox[]>([]);
+  const [showVisualCanvas, setShowVisualCanvas] = useState<boolean>(true);
   const [manualRegion, setManualRegion] = useState<string>('');
   const [showManualInput, setShowManualInput] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -40,6 +45,7 @@ export const SingleCleaner: React.FC = () => {
     setErrorMsg(null);
     setSelectedFile(file);
     setCleanResult(null);
+    setVisualBoxes([]);
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
   };
@@ -77,8 +83,15 @@ export const SingleCleaner: React.FC = () => {
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('mode', mode);
+
+    // Combine visual canvas bounding boxes with manual text coordinates
+    const boxStrings = visualBoxes.map((b) => `${b.x},${b.y},${b.w},${b.h}`);
     if (showManualInput && manualRegion.trim()) {
-      formData.append('region', manualRegion.trim());
+      boxStrings.push(manualRegion.trim());
+    }
+    const combinedRegion = boxStrings.join(';');
+    if (combinedRegion) {
+      formData.append('region', combinedRegion);
     }
 
     try {
@@ -105,6 +118,8 @@ export const SingleCleaner: React.FC = () => {
     setSelectedFile(null);
     setPreviewUrl(null);
     setCleanResult(null);
+    setVisualBoxes([]);
+    setManualRegion('');
     setErrorMsg(null);
   };
 
@@ -213,31 +228,32 @@ export const SingleCleaner: React.FC = () => {
               </button>
             </div>
 
-            {/* Mode Selector Radio Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Mode Selector Radio Cards: 3 Options */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Option 1: AI Logos */}
               <div
                 onClick={() => setMode('visible')}
                 className={`p-4 rounded-2xl border cursor-pointer transition-all ${
                   mode === 'visible'
-                    ? 'bg-indigo-50 dark:bg-indigo-600/15 border-indigo-500 shadow-md shadow-indigo-500/5'
+                    ? 'bg-indigo-50 dark:bg-indigo-600/15 border-indigo-500 shadow-md shadow-indigo-500/5 ring-1 ring-indigo-500/30'
                     : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800/80'
                 }`}
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                      <Sparkles className="w-5 h-5" />
+                  <div className="flex items-start space-x-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <Sparkles className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="flex items-center space-x-2">
-                        <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                      <div className="flex items-center space-x-1.5 flex-wrap">
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
                           {t('modeFullTitle')}
                         </p>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-semibold">
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-bold">
                           {t('recommended')}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                         {t('modeFullDesc')}
                       </p>
                     </div>
@@ -247,29 +263,68 @@ export const SingleCleaner: React.FC = () => {
                     name="cleanMode"
                     checked={mode === 'visible'}
                     onChange={() => setMode('visible')}
-                    className="accent-indigo-600 mt-1 shrink-0"
+                    className="accent-indigo-600 mt-0.5 shrink-0"
                   />
                 </div>
               </div>
 
+              {/* Option 2: General OCR Text Detector */}
               <div
-                onClick={() => setMode('metadata')}
+                onClick={() => setMode('ocr')}
                 className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                  mode === 'metadata'
-                    ? 'bg-indigo-50 dark:bg-indigo-600/15 border-indigo-500 shadow-md shadow-indigo-500/5'
+                  mode === 'ocr'
+                    ? 'bg-violet-50 dark:bg-violet-600/15 border-violet-500 shadow-md shadow-violet-500/5 ring-1 ring-violet-500/30'
                     : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800/80'
                 }`}
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                      <ShieldCheck className="w-5 h-5" />
+                  <div className="flex items-start space-x-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <ScanText className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                      <div className="flex items-center space-x-1.5 flex-wrap">
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                          {t('modeOcrTitle')}
+                        </p>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300 font-bold">
+                          {t('smartVision')}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        {t('modeOcrDesc')}
+                      </p>
+                    </div>
+                  </div>
+                  <input
+                    type="radio"
+                    name="cleanMode"
+                    checked={mode === 'ocr'}
+                    onChange={() => setMode('ocr')}
+                    className="accent-violet-600 mt-0.5 shrink-0"
+                  />
+                </div>
+              </div>
+
+              {/* Option 3: Metadata Only */}
+              <div
+                onClick={() => setMode('metadata')}
+                className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                  mode === 'metadata'
+                    ? 'bg-emerald-50 dark:bg-emerald-600/15 border-emerald-500 shadow-md shadow-emerald-500/5 ring-1 ring-emerald-500/30'
+                    : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
                         {t('modeMetaTitle')}
                       </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                         {t('modeMetaDesc')}
                       </p>
                     </div>
@@ -279,28 +334,58 @@ export const SingleCleaner: React.FC = () => {
                     name="cleanMode"
                     checked={mode === 'metadata'}
                     onChange={() => setMode('metadata')}
-                    className="accent-indigo-600 mt-1 shrink-0"
+                    className="accent-emerald-600 mt-0.5 shrink-0"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Optional Custom Region Toggle */}
-            {mode === 'visible' && (
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowManualInput(!showManualInput)}
-                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1.5 font-medium"
-                >
-                  <Sliders className="w-3.5 h-3.5" />
-                  <span>{showManualInput ? t('customRegionHide') : t('customRegionToggle')}</span>
-                </button>
+            {/* Interactive Visual Canvas Box Selector & Manual Coordinates */}
+            {mode !== 'metadata' && previewUrl && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setShowVisualCanvas(!showVisualCanvas)}
+                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1.5 font-medium select-none"
+                  >
+                    <Crosshair className="w-3.5 h-3.5" />
+                    <span>
+                      {showVisualCanvas
+                        ? (t('visualSelectHide') || 'Sembunyikan kanvas penanda')
+                        : (t('visualSelectToggle') || 'Tandai Watermark Langsung di Foto')}
+                    </span>
+                    {visualBoxes.length > 0 && (
+                      <span className="bg-indigo-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                        {visualBoxes.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowManualInput(!showManualInput)}
+                    className="text-[11px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center space-x-1"
+                  >
+                    <Sliders className="w-3 h-3" />
+                    <span>{showManualInput ? t('customRegionHide') : t('customRegionToggle')}</span>
+                  </button>
+                </div>
+
+                {showVisualCanvas && (
+                  <VisualRegionSelector
+                    imageSrc={previewUrl}
+                    boxes={visualBoxes}
+                    onBoxesChange={setVisualBoxes}
+                    disabled={isProcessing}
+                  />
+                )}
+
                 {showManualInput && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-2 p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1.5"
+                    className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1.5"
                   >
                     <label className="text-slate-700 dark:text-slate-300 font-medium">
                       {t('customRegionLabel')}

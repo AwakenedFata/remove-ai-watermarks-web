@@ -5,7 +5,7 @@ import uuid
 import shutil
 import zipfile
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -115,11 +115,23 @@ async def identify_endpoint(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to inspect image: {str(e)}")
 
+def _parse_region_boxes(region_str: Optional[str]) -> List[Tuple[int, int, int, int]]:
+    """Parses single or multiple bounding boxes formatted as 'x,y,w,h; x,y,w,h'."""
+    if not region_str:
+        return []
+    boxes: List[Tuple[int, int, int, int]] = []
+    raw_items = [item.strip() for item in region_str.replace('\n', ';').split(';') if item.strip()]
+    for item in raw_items:
+        nums = [int(v.strip()) for v in item.split(',') if v.strip()]
+        if len(nums) == 4:
+            boxes.append((nums[0], nums[1], nums[2], nums[3]))
+    return boxes
+
 @app.post("/api/clean")
 async def clean_endpoint(
     file: UploadFile = File(...),
-    mode: str = Form("visible"), # "visible" or "metadata"
-    region: Optional[str] = Form(None) # "x,y,w,h" optional manual region
+    mode: str = Form("visible"), # "visible", "ocr", or "metadata"
+    region: Optional[str] = Form(None) # "x,y,w,h; x,y,w,h" optional manual or visual regions
 ):
     upload_name = f"{uuid.uuid4().hex[:12]}_{file.filename}"
     file_path = UPLOAD_DIR / upload_name
@@ -137,28 +149,52 @@ async def clean_endpoint(
         pre_report = identify(file_path)
         pre_info = _build_provenance_dict(pre_report)
 
+        manual_boxes = _parse_region_boxes(region)
+
         if mode == "metadata":
             # Lossless metadata stripping
             remove_ai_metadata(file_path, out_path)
             removed_marks = ["All AI Metadata (C2PA, IPTC, EXIF)"]
+        elif mode == "ocr":
+            # General OCR text / arbitrary watermark detection mode
+            import cv2
+            from remove_ai_watermarks.region_eraser import erase
+            from ocr_detector import detect_arbitrary_text_boxes
+
+            detected_boxes = detect_arbitrary_text_boxes(file_path)
+            all_boxes = list(detected_boxes) + list(manual_boxes)
+
+            if all_boxes:
+                img = cv2.imread(str(file_path))
+                if img is not None:
+                    erased_img = erase(img, boxes=all_boxes)
+                    cv2.imwrite(str(out_path), erased_img)
+                    remove_ai_metadata(out_path, out_path)
+                    marks = []
+                    if detected_boxes:
+                        marks.append(f"Auto OCR Detected Text ({len(detected_boxes)} area)")
+                    if manual_boxes:
+                        marks.append(f"Visual Selected Boxes ({len(manual_boxes)} area)")
+                    marks.append("AI Metadata Stripped")
+                    removed_marks = marks
+                else:
+                    _, removed = raiw.remove_visible(str(file_path), str(out_path))
+                    removed_marks = removed or ["Metadata cleaned"]
+            else:
+                # No OCR text found, fallback to AI visible + metadata check
+                _, removed = raiw.remove_visible(str(file_path), str(out_path))
+                removed_marks = (removed or []) + ["No arbitrary text found via OCR; checked AI signatures"]
         else:
-            # Mode "visible": strips visible watermark and metadata
-            if region:
-                # Manual region erase
+            # Mode "visible": strips AI visible watermark + any visual boxes + metadata
+            if manual_boxes:
                 import cv2
                 from remove_ai_watermarks.region_eraser import erase
-                parts = [int(x.strip()) for x in region.split(",") if x.strip()]
-                if len(parts) == 4:
-                    x, y, w, h = parts
-                    img = cv2.imread(str(file_path))
-                    if img is not None:
-                        erased_img = erase(img, boxes=[(x, y, w, h)])
-                        cv2.imwrite(str(out_path), erased_img)
-                        remove_ai_metadata(out_path, out_path)
-                        removed_marks = [f"Manual region [{x},{y},{w},{h}] & Metadata"]
-                    else:
-                        _, removed = raiw.remove_visible(str(file_path), str(out_path))
-                        removed_marks = removed or ["Metadata cleaned (No visible marks found)"]
+                img = cv2.imread(str(file_path))
+                if img is not None:
+                    erased_img = erase(img, boxes=manual_boxes)
+                    cv2.imwrite(str(out_path), erased_img)
+                    remove_ai_metadata(out_path, out_path)
+                    removed_marks = [f"Visual Marked Regions ({len(manual_boxes)} area) & AI Metadata"]
                 else:
                     _, removed = raiw.remove_visible(str(file_path), str(out_path))
                     removed_marks = removed or ["Metadata cleaned (No visible marks found)"]
@@ -211,6 +247,23 @@ async def batch_endpoint(
             if mode == "metadata":
                 remove_ai_metadata(in_path, out_path)
                 removed = ["AI Metadata stripped"]
+            elif mode == "ocr":
+                import cv2
+                from remove_ai_watermarks.region_eraser import erase
+                from ocr_detector import detect_arbitrary_text_boxes
+
+                detected_boxes = detect_arbitrary_text_boxes(in_path)
+                if detected_boxes:
+                    img = cv2.imread(str(in_path))
+                    if img is not None:
+                        erased_img = erase(img, boxes=detected_boxes)
+                        cv2.imwrite(str(out_path), erased_img)
+                        remove_ai_metadata(out_path, out_path)
+                        removed = [f"OCR Detected Text ({len(detected_boxes)} area)", "Metadata stripped"]
+                    else:
+                        _, removed = raiw.remove_visible(str(in_path), str(out_path))
+                else:
+                    _, removed = raiw.remove_visible(str(in_path), str(out_path))
             else:
                 _, removed = raiw.remove_visible(str(in_path), str(out_path))
 

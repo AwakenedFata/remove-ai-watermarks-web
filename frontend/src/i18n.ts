@@ -22,17 +22,28 @@ export const translations = {
     chooseAnother: 'Change Image',
 
     // Modes
-    modeFullTitle: 'Full Clean (Logo + AI Tags)',
-    modeFullDesc: 'Erases visible watermarks (sparkles, stamps) and clears hidden AI labels.',
+    modeFullTitle: 'Auto AI Logos (Gemini, Doubao)',
+    modeFullDesc: 'Erases known AI generator badges (sparkles, stamps) and clears hidden AI labels.',
+    modeOcrTitle: 'Auto General Text / Copyright (OCR)',
+    modeOcrDesc: 'Uses OCR AI vision to detect arbitrary text watermarks (e.g. ©Photographer, copyright) and erase them.',
     modeMetaTitle: 'Tags Only (Lossless)',
     modeMetaDesc: 'Leaves every single pixel 100% untouched. Only strips hidden AI tags.',
     recommended: 'Recommended',
+    smartVision: 'AI Vision OCR',
 
-    // Custom region
+    // Visual Box Selector & Custom region
+    visualSelectorTitle: 'Visual Watermark Marker',
+    visualSelectorHint: 'Click & drag on the watermark to mark the area you want to erase',
+    visualSelectorMoreHint: 'Draw another box or click "Clean Photo" to erase',
+    areasMarked: 'marked area(s)',
+    clearAll: 'Clear All',
+    readyToEraseAreas: 'Marked areas ready to erase:',
+    visualSelectToggle: 'Draw / Mark Watermark on Image',
+    visualSelectHide: 'Hide visual box drawer',
     customRegionToggle: 'Watermark in a custom spot? (Optional)',
     customRegionHide: 'Hide custom coordinates',
     customRegionLabel: 'Box coordinates (x, y, width, height in pixels):',
-    customRegionHelp: 'Leave blank to let our smart detector find the logo automatically.',
+    customRegionHelp: 'Mark boxes visually above or type coordinates manually.',
 
     // Action
     btnClean: 'Clean Watermark & Tags',
@@ -110,17 +121,28 @@ export const translations = {
     chooseAnother: 'Ganti Foto',
 
     // Modes
-    modeFullTitle: 'Bersih Total (Logo + Tanda AI)',
-    modeFullDesc: 'Menghapus logo terlihat (sparkle/cap) sekaligus melucuti tanda AI tersembunyi.',
+    modeFullTitle: 'Otomatis Logo AI (Gemini, Doubao)',
+    modeFullDesc: 'Menghapus logo vendor AI (sparkle/cap) sekaligus melucuti tanda AI tersembunyi.',
+    modeOcrTitle: 'Otomatis Teks Umum / Hak Cipta (OCR)',
+    modeOcrDesc: 'Memindai foto dengan model AI OCR untuk mendeteksi tanda teks fotografer (seperti ©Nama) lalu menghapusnya.',
     modeMetaTitle: 'Hanya Tanda AI (Kualitas Asli)',
     modeMetaDesc: 'Piksel foto 100% utuh tanpa diubah. Hanya menghapus metadata "Made with AI".',
     recommended: 'Direkomendasikan',
+    smartVision: 'AI Vision OCR',
 
-    // Custom region
+    // Visual Box Selector & Custom region
+    visualSelectorTitle: 'Penanda Area Watermark Visual',
+    visualSelectorHint: 'Klik & geser (drag) di atas watermark untuk menandai area yang ingin dihapus',
+    visualSelectorMoreHint: 'Tandai area lain atau langsung klik tombol Bersihkan Foto',
+    areasMarked: 'area ditandai',
+    clearAll: 'Hapus Semua',
+    readyToEraseAreas: 'Area siap dihapus:',
+    visualSelectToggle: 'Tandai Watermark Langsung di Foto',
+    visualSelectHide: 'Sembunyikan kanvas penanda',
     customRegionToggle: 'Watermark di posisi khusus? (Opsional)',
     customRegionHide: 'Sembunyikan koordinat khusus',
     customRegionLabel: 'Koordinat area (x, y, lebar, tinggi dalam piksel):',
-    customRegionHelp: 'Kosongkan jika ingin detektor pintar mencari logo secara otomatis.',
+    customRegionHelp: 'Tandai area secara visual di atas atau ketik angka koordinat secara manual.',
 
     // Action
     btnClean: 'Bersihkan Watermark & Tanda AI',

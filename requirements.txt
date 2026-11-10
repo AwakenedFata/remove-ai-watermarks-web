@@ -3,3 +3,4 @@ uvicorn[standard]>=0.30.0
 python-multipart>=0.0.12
 remove-ai-watermarks[visible]>=0.55.0
 opencv-python-headless>=4.10.0
+easyocr>=1.7.2

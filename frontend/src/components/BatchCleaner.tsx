@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import type React from 'react';
-import { Layers, Download, CheckCircle2, XCircle, RefreshCw, Sparkles, AlertCircle } from 'lucide-react';
+import { Layers, Download, CheckCircle2, XCircle, RefreshCw, Sparkles, AlertCircle, ScanText, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { BatchResponse } from '../types';
 import { useApp } from '../context/AppContext';
@@ -8,7 +8,7 @@ import { useApp } from '../context/AppContext';
 export const BatchCleaner: React.FC = () => {
   const { t } = useApp();
   const [files, setFiles] = useState<File[]>([]);
-  const [mode, setMode] = useState<'visible' | 'metadata'>('visible');
+  const [mode, setMode] = useState<'visible' | 'ocr' | 'metadata'>('visible');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [batchResult, setBatchResult] = useState<BatchResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -138,31 +138,60 @@ export const BatchCleaner: React.FC = () => {
               </button>
             </div>
 
-            {/* Mode selection */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Mode selection - 3 options */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => setMode('visible')}
                 className={`p-3.5 rounded-2xl border text-left text-xs transition-all ${
                   mode === 'visible'
-                    ? 'bg-indigo-50 dark:bg-indigo-600/20 border-indigo-500 shadow-sm'
+                    ? 'bg-indigo-50 dark:bg-indigo-600/20 border-indigo-500 shadow-sm ring-1 ring-indigo-500/30'
                     : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
                 }`}
               >
-                <div className="font-bold text-slate-900 dark:text-slate-100">{t('modeFullTitle')}</div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{t('modeFullDesc')}</div>
+                <div className="flex items-center space-x-1.5 font-bold text-slate-900 dark:text-slate-100">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>{t('modeFullTitle')}</span>
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  {t('modeFullDesc')}
+                </div>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setMode('ocr')}
+                className={`p-3.5 rounded-2xl border text-left text-xs transition-all ${
+                  mode === 'ocr'
+                    ? 'bg-violet-50 dark:bg-violet-600/20 border-violet-500 shadow-sm ring-1 ring-violet-500/30'
+                    : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <div className="flex items-center space-x-1.5 font-bold text-slate-900 dark:text-slate-100">
+                  <ScanText className="w-3.5 h-3.5 text-violet-500" />
+                  <span>{t('modeOcrTitle')}</span>
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  {t('modeOcrDesc')}
+                </div>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setMode('metadata')}
                 className={`p-3.5 rounded-2xl border text-left text-xs transition-all ${
                   mode === 'metadata'
-                    ? 'bg-indigo-50 dark:bg-indigo-600/20 border-indigo-500 shadow-sm'
+                    ? 'bg-emerald-50 dark:bg-emerald-600/20 border-emerald-500 shadow-sm ring-1 ring-emerald-500/30'
                     : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
                 }`}
               >
-                <div className="font-bold text-slate-900 dark:text-slate-100">{t('modeMetaTitle')}</div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{t('modeMetaDesc')}</div>
+                <div className="flex items-center space-x-1.5 font-bold text-slate-900 dark:text-slate-100">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>{t('modeMetaTitle')}</span>
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  {t('modeMetaDesc')}
+                </div>
               </button>
             </div>
 
