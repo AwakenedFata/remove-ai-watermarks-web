@@ -38,8 +38,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
             />
           </div>
 
-          {/* Desktop Navigation Tabs - Seamless Filled Segmented Bar */}
-          <nav className="hidden sm:inline-flex items-stretch bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden p-0 shadow-inner">
+          {/* Desktop Navigation Tabs - Concentric Proportional Segmented Pill */}
+          <nav className="hidden sm:inline-flex items-center p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-inner space-x-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -47,12 +47,19 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`relative flex items-center space-x-2 px-5 py-3 text-xs sm:text-sm font-bold transition-all select-none ${
+                  className={`relative flex items-center space-x-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors select-none z-10 ${
                     isActive
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
+                      ? 'text-white'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
+                  {isActive && (
+                    <motion.div
+                      layoutId="desktopNavPill"
+                      className="absolute inset-0 bg-indigo-600 rounded-lg -z-10 shadow-sm"
+                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                    />
+                  )}
                   <Icon className="w-4 h-4 shrink-0" />
                   <span className="whitespace-nowrap">{item.label}</span>
                 </button>
