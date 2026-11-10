@@ -6,6 +6,7 @@ import shutil
 import zipfile
 from pathlib import Path
 from typing import List, Optional, Tuple
+import numpy as np
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -127,6 +128,63 @@ def _parse_region_boxes(region_str: Optional[str]) -> List[Tuple[int, int, int, 
             boxes.append((nums[0], nums[1], nums[2], nums[3]))
     return boxes
 
+def build_smart_watermark_mask(image_bgr: np.ndarray, boxes: List[Tuple[int, int, int, int]]) -> np.ndarray:
+    """
+    Intelligently generates a stroke-level mask inside bounding boxes.
+    Instead of wiping out the entire solid rectangle (which would delete underlying subjects like cars or faces),
+    it isolates the high-contrast watermark text glyphs, shadows, and outlines, preserving the background.
+    """
+    import cv2
+    h, w = image_bgr.shape[:2]
+    mask = np.zeros((h, w), np.uint8)
+
+    for (x, y, bw, bh) in boxes:
+        x0, y0 = max(0, x), max(0, y)
+        x1, y1 = min(w, x + bw), min(h, y + bh)
+        if x1 <= x0 or y1 <= y0:
+            continue
+
+        # If box is very small (< 28x28), treat as solid mark
+        if (x1 - x0) < 28 or (y1 - y0) < 28:
+            mask[y0:y1, x0:x1] = 255
+            continue
+
+        roi = image_bgr[y0:y1, x0:x1]
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+
+        # 1. Top-hat & Black-hat for bright and dark text strokes
+        kernel_hat = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+        top_hat = cv2.morphologyEx(gray, cv2.MORPH_TOPHAT, kernel_hat)
+        black_hat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, kernel_hat)
+
+        # 2. Morphological gradient for sharp text outline edges
+        grad = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)))
+
+        # 3. Direct bright threshold for white watermark characters
+        bright_white = (gray > 165).astype(np.uint8) * 255
+
+        # Combine text signals
+        combined = cv2.bitwise_or(top_hat, black_hat)
+        combined = cv2.bitwise_or(combined, grad)
+        _, thresh = cv2.threshold(combined, 22, 255, cv2.THRESH_BINARY)
+        stroke_binary = cv2.bitwise_or(thresh, bright_white)
+
+        # 4. Remove small noise spots (salt-and-pepper)
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(stroke_binary, 8)
+        clean_roi_mask = np.zeros_like(stroke_binary)
+        for i in range(1, num_labels):
+            area = stats[i, cv2.CC_STAT_AREA]
+            if area >= 10:
+                clean_roi_mask[labels == i] = 255
+
+        # 5. Dilate strokes by 4px to cover anti-aliasing and soft drop shadows
+        kernel_d = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        dilated = cv2.dilate(clean_roi_mask, kernel_d, iterations=1)
+
+        mask[y0:y1, x0:x1] = dilated
+
+    return mask
+
 @app.post("/api/clean")
 async def clean_endpoint(
     file: UploadFile = File(...),
@@ -171,7 +229,8 @@ async def clean_endpoint(
                 img = cv2.imread(str(file_path))
                 if img is not None:
                     inpaint_backend = "lama" if lama_available() else "cv2"
-                    erased_img = erase(img, boxes=all_boxes, backend=inpaint_backend, dilate=8)
+                    smart_mask = build_smart_watermark_mask(img, all_boxes)
+                    erased_img = erase(img, mask=smart_mask, backend=inpaint_backend)
                     cv2.imwrite(str(out_path), erased_img)
                     remove_ai_metadata(out_path, out_path)
                     marks = []
@@ -179,7 +238,7 @@ async def clean_endpoint(
                         marks.append(f"Auto OCR Detected Text ({len(detected_boxes)} area)")
                     if manual_boxes:
                         marks.append(f"Visual Selected Boxes ({len(manual_boxes)} area)")
-                    marks.append(f"Inpainted with {inpaint_backend.upper()}")
+                    marks.append(f"Smart Inpainted with {inpaint_backend.upper()}")
                     removed_marks = marks
                 else:
                     _, removed = raiw.remove_visible(str(file_path), str(out_path))
@@ -196,10 +255,11 @@ async def clean_endpoint(
                 img = cv2.imread(str(file_path))
                 if img is not None:
                     inpaint_backend = "lama" if lama_available() else "cv2"
-                    erased_img = erase(img, boxes=manual_boxes, backend=inpaint_backend, dilate=8)
+                    smart_mask = build_smart_watermark_mask(img, manual_boxes)
+                    erased_img = erase(img, mask=smart_mask, backend=inpaint_backend)
                     cv2.imwrite(str(out_path), erased_img)
                     remove_ai_metadata(out_path, out_path)
-                    removed_marks = [f"Visual Marked Regions ({len(manual_boxes)} area) inpainted with {inpaint_backend.upper()}"]
+                    removed_marks = [f"Visual Marked Regions ({len(manual_boxes)} area) smart-inpainted with {inpaint_backend.upper()}"]
                 else:
                     _, removed = raiw.remove_visible(str(file_path), str(out_path))
                     removed_marks = removed or ["Metadata cleaned (No visible marks found)"]
@@ -265,10 +325,11 @@ async def batch_endpoint(
                     img = cv2.imread(str(in_path))
                     if img is not None:
                         inpaint_backend = "lama" if lama_available() else "cv2"
-                        erased_img = erase(img, boxes=detected_boxes, backend=inpaint_backend, dilate=8)
+                        smart_mask = build_smart_watermark_mask(img, detected_boxes)
+                        erased_img = erase(img, mask=smart_mask, backend=inpaint_backend)
                         cv2.imwrite(str(out_path), erased_img)
                         remove_ai_metadata(out_path, out_path)
-                        removed = [f"OCR Detected Text ({len(detected_boxes)} area)", f"Inpainted with {inpaint_backend.upper()}"]
+                        removed = [f"OCR Detected Text ({len(detected_boxes)} area)", f"Smart Inpainted with {inpaint_backend.upper()}"]
                     else:
                         _, removed = raiw.remove_visible(str(in_path), str(out_path))
                 else:
