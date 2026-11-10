@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
           </div>
 
           {/* Desktop Navigation Tabs - Concentric Proportional Segmented Pill */}
-          <nav className="hidden sm:inline-flex items-center p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-inner space-x-1">
+          <nav className="hidden sm:inline-flex items-center p-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-inner space-x-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -47,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`relative flex items-center space-x-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors select-none z-10 ${
+                  className={`relative flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors select-none z-10 ${
                     isActive
                       ? 'text-white'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -56,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                   {isActive && (
                     <motion.div
                       layoutId="desktopNavPill"
-                      className="absolute inset-0 bg-indigo-600 rounded-lg -z-10 shadow-sm"
+                      className="absolute inset-0 bg-indigo-600 rounded-xl -z-10 shadow-sm"
                       transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                     />
                   )}
