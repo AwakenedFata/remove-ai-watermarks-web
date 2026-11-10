@@ -21,25 +21,15 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
     <header className="sticky top-0 z-40 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo & Brand */}
-          <div className="flex items-center space-x-3">
+          {/* Logo & Brand (Full Wordmark) */}
+          <div className="flex items-center">
             <motion.img
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               src="/aiwmremoverlogo.png"
-              alt="Logo"
-              className="w-10 h-10 rounded-xl object-contain cursor-pointer shadow-sm"
+              alt="AI Watermark Remover"
+              className="h-9 sm:h-11 w-auto max-w-[200px] sm:max-w-[240px] object-contain cursor-pointer select-none"
             />
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="font-bold text-lg text-slate-900 dark:text-white tracking-tight">
-                  {t('appTitle')}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
-                {t('appSubtitle')}
-              </p>
-            </div>
           </div>
 
           {/* Desktop Navigation Tabs */}
