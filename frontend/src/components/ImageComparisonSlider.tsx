@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type React from 'react';
 import { Columns, Eye, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useApp } from '../context/AppContext';
 
 interface ImageComparisonSliderProps {
   originalSrc: string;
@@ -13,6 +15,7 @@ export const ImageComparisonSlider: React.FC<ImageComparisonSliderProps> = ({
   cleanedSrc,
   alt = 'Comparison'
 }) => {
+  const { t } = useApp();
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const [viewMode, setViewMode] = useState<'slider' | 'side-by-side'>('slider');
@@ -58,22 +61,26 @@ export const ImageComparisonSlider: React.FC<ImageComparisonSliderProps> = ({
 
   return (
     <div className="flex flex-col space-y-3">
-      {/* View Mode & Zoom Toolbar */}
-      <div className="flex items-center justify-between text-xs text-slate-400 bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-        <div className="flex items-center space-x-2">
+      {/* Controls Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900/60 p-2 rounded-2xl border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center space-x-1 sm:space-x-2">
           <button
             onClick={() => setViewMode('slider')}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md font-medium transition-colors ${
-              viewMode === 'slider' ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40' : 'hover:bg-slate-800 text-slate-400'
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl font-medium transition-all ${
+              viewMode === 'slider'
+                ? 'bg-white dark:bg-indigo-600 text-indigo-600 dark:text-white shadow-sm'
+                : 'hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             <Columns className="w-3.5 h-3.5" />
-            <span>Split Slider</span>
+            <span>Slider</span>
           </button>
           <button
             onClick={() => setViewMode('side-by-side')}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md font-medium transition-colors ${
-              viewMode === 'side-by-side' ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40' : 'hover:bg-slate-800 text-slate-400'
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl font-medium transition-all ${
+              viewMode === 'side-by-side'
+                ? 'bg-white dark:bg-indigo-600 text-indigo-600 dark:text-white shadow-sm'
+                : 'hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             <Eye className="w-3.5 h-3.5" />
@@ -81,25 +88,27 @@ export const ImageComparisonSlider: React.FC<ImageComparisonSliderProps> = ({
           </button>
         </div>
 
-        <div className="flex items-center space-x-1 sm:space-x-2">
+        <div className="flex items-center space-x-1">
           <button
             onClick={() => setZoom(prev => Math.max(0.5, prev - 0.25))}
-            className="p-1 hover:bg-slate-800 rounded text-slate-300 hover:text-white"
+            className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
             title="Zoom Out"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
-          <span className="font-mono text-slate-300 min-w-10 text-center">{Math.round(zoom * 100)}%</span>
+          <span className="font-mono text-slate-700 dark:text-slate-300 min-w-10 text-center font-medium">
+            {Math.round(zoom * 100)}%
+          </span>
           <button
             onClick={() => setZoom(prev => Math.min(3, prev + 0.25))}
-            className="p-1 hover:bg-slate-800 rounded text-slate-300 hover:text-white"
+            className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
             title="Zoom In"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
           <button
             onClick={() => setZoom(1)}
-            className="p-1 hover:bg-slate-800 rounded text-slate-300 hover:text-white ml-1"
+            className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors ml-1"
             title="Reset Zoom"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -107,11 +116,11 @@ export const ImageComparisonSlider: React.FC<ImageComparisonSliderProps> = ({
         </div>
       </div>
 
-      {/* Main Comparison Canvas */}
+      {/* Main Canvas */}
       {viewMode === 'slider' ? (
         <div
           ref={containerRef}
-          className="relative w-full h-[380px] sm:h-[480px] md:h-[560px] bg-slate-950/80 rounded-2xl overflow-hidden border border-slate-800 select-none shadow-2xl flex items-center justify-center cursor-ew-resize"
+          className="relative w-full h-[320px] sm:h-[440px] md:h-[520px] bg-slate-100 dark:bg-slate-950/90 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 select-none shadow-xl flex items-center justify-center cursor-ew-resize touch-none"
           onMouseDown={() => setIsDragging(true)}
           onTouchStart={() => setIsDragging(true)}
         >
@@ -120,14 +129,14 @@ export const ImageComparisonSlider: React.FC<ImageComparisonSliderProps> = ({
             className="w-full h-full relative transition-transform duration-100 ease-out flex items-center justify-center"
             style={{ transform: `scale(${zoom})` }}
           >
-            {/* Background Layer: Cleaned Image */}
+            {/* Cleaned Image (Bottom) */}
             <img
               src={cleanedSrc}
               alt={`${alt} - Cleaned`}
               className="absolute inset-0 w-full h-full object-contain pointer-events-none"
             />
 
-            {/* Foreground Clipped Layer: Original Image */}
+            {/* Original Image (Clipped) */}
             <div
               className="absolute inset-0 overflow-hidden pointer-events-none"
               style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
@@ -140,35 +149,38 @@ export const ImageComparisonSlider: React.FC<ImageComparisonSliderProps> = ({
             </div>
           </div>
 
-          {/* Divider Handle */}
+          {/* Divider Line */}
           <div
             className="absolute top-0 bottom-0 w-0.5 bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.8)] z-20 pointer-events-none"
             style={{ left: `${sliderPosition}%` }}
           >
-            <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-indigo-600 border-2 border-white shadow-xl flex items-center justify-center">
+            <motion.div
+              whileHover={{ scale: 1.15 }}
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-indigo-600 border-2 border-white shadow-xl flex items-center justify-center"
+            >
               <div className="flex space-x-0.5">
-                <div className="w-0.5 h-3 bg-white/80 rounded-full" />
-                <div className="w-0.5 h-3 bg-white/80 rounded-full" />
+                <div className="w-0.5 h-3 bg-white/90 rounded-full" />
+                <div className="w-0.5 h-3 bg-white/90 rounded-full" />
               </div>
-            </div>
+            </motion.div>
           </div>
 
-          {/* Persistent Labels */}
-          <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-rose-500/80 backdrop-blur-md text-white text-[11px] font-semibold tracking-wide border border-rose-400/30 z-30 pointer-events-none shadow-md">
-            ORIGINAL (WITH AI MARKS)
+          {/* Badges */}
+          <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-rose-500/90 backdrop-blur-md text-white text-[11px] font-bold tracking-wider z-30 pointer-events-none shadow-md">
+            {t('originalLabel')}
           </div>
-          <div className="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-emerald-500/80 backdrop-blur-md text-white text-[11px] font-semibold tracking-wide border border-emerald-400/30 z-30 pointer-events-none shadow-md">
-            CLEANED (AI STRIPPED)
+          <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-emerald-600/90 backdrop-blur-md text-white text-[11px] font-bold tracking-wider z-30 pointer-events-none shadow-md">
+            {t('cleanedLabel')}
           </div>
         </div>
       ) : (
-        /* Side by Side Grid */
+        /* Side by Side Mode */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="relative bg-slate-950/80 rounded-2xl overflow-hidden border border-rose-500/30 p-2 shadow-xl">
-            <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-rose-500/80 backdrop-blur-md text-white text-[11px] font-semibold tracking-wide z-10 shadow">
-              ORIGINAL
+          <div className="relative bg-slate-100 dark:bg-slate-950/80 rounded-2xl overflow-hidden border border-rose-500/30 p-2 shadow-lg">
+            <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-rose-500 text-white text-[11px] font-bold tracking-wider z-10 shadow">
+              {t('originalLabel')}
             </div>
-            <div className="h-[320px] sm:h-[400px] flex items-center justify-center overflow-hidden">
+            <div className="h-[280px] sm:h-[380px] flex items-center justify-center overflow-hidden">
               <img
                 src={originalSrc}
                 alt="Original"
@@ -178,11 +190,11 @@ export const ImageComparisonSlider: React.FC<ImageComparisonSliderProps> = ({
             </div>
           </div>
 
-          <div className="relative bg-slate-950/80 rounded-2xl overflow-hidden border border-emerald-500/30 p-2 shadow-xl">
-            <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-emerald-500/80 backdrop-blur-md text-white text-[11px] font-semibold tracking-wide z-10 shadow">
-              CLEANED
+          <div className="relative bg-slate-100 dark:bg-slate-950/80 rounded-2xl overflow-hidden border border-emerald-500/30 p-2 shadow-lg">
+            <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-bold tracking-wider z-10 shadow">
+              {t('cleanedLabel')}
             </div>
-            <div className="h-[320px] sm:h-[400px] flex items-center justify-center overflow-hidden">
+            <div className="h-[280px] sm:h-[380px] flex items-center justify-center overflow-hidden">
               <img
                 src={cleanedSrc}
                 alt="Cleaned"

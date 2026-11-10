@@ -1,81 +1,119 @@
 import type React from 'react';
-import { Cpu, Zap, Layers, Search, Sparkles } from 'lucide-react';
-import type { SystemStatus } from '../types';
+import { motion } from 'framer-motion';
+import { Sparkles, Sun, Moon, Globe, Wand2, Layers, SearchCheck } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 interface HeaderProps {
-  status: SystemStatus | null;
   activeTab: 'single' | 'batch' | 'inspect';
   setActiveTab: (tab: 'single' | 'batch' | 'inspect') => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ status, activeTab, setActiveTab }) => {
+export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
+  const { lang, setLang, theme, toggleTheme, t } = useApp();
+
+  const navItems = [
+    { id: 'single' as const, label: t('tabSingle'), icon: Wand2 },
+    { id: 'batch' as const, label: t('tabBatch'), icon: Layers },
+    { id: 'inspect' as const, label: t('tabInspect'), icon: SearchCheck },
+  ];
+
   return (
-    <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
+    <header className="sticky top-0 z-40 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
+            <motion.div
+              whileHover={{ rotate: 12, scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white cursor-pointer"
+            >
+              <Sparkles className="w-5 h-5" />
+            </motion.div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-bold text-lg text-white tracking-tight">AI Watermark Studio</span>
-                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                  v{status?.version || '0.55'}
+                <span className="font-bold text-lg text-slate-900 dark:text-white tracking-tight">
+                  {t('appTitle')}
+                </span>
+                <span className="hidden sm:inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                  {t('systemReady')}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">Production-grade C2PA, IPTC & Visible AI Mark Remover</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
+                {t('appSubtitle')}
+              </p>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="flex space-x-1 sm:space-x-2 bg-slate-800/60 p-1 rounded-xl border border-slate-700/50">
-            <button
-              onClick={() => setActiveTab('single')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                activeTab === 'single'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-              }`}
-            >
-              <Zap className="w-4 h-4" />
-              <span>Studio Clean</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('batch')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                activeTab === 'batch'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-              }`}
-            >
-              <Layers className="w-4 h-4" />
-              <span>Batch Queue</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('inspect')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                activeTab === 'inspect'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-              }`}
-            >
-              <Search className="w-4 h-4" />
-              <span>C2PA Inspector</span>
-            </button>
+          {/* Desktop Navigation Tabs */}
+          <nav className="hidden sm:flex items-center space-x-1 bg-slate-100 dark:bg-slate-900/90 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`relative flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                    isActive
+                      ? 'text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="desktopNavPill"
+                      className="absolute inset-0 bg-indigo-600 rounded-xl"
+                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                    />
+                  )}
+                  <Icon className="w-4 h-4 relative z-10" />
+                  <span className="relative z-10">{item.label}</span>
+                </button>
+              );
+            })}
           </nav>
 
-          {/* Hardware Status Indicator */}
-          <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-xs">
-            <Cpu className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="text-slate-400">Engine:</span>
-            <span className="text-slate-200 font-medium">
-              {status?.hardware?.device_name || 'Loading...'}
-            </span>
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          {/* Controls: Language Dropdown & Theme Toggle */}
+          <div className="flex items-center space-x-2">
+            {/* Language Selector Dropdown */}
+            <div className="relative flex items-center bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1 text-xs">
+              <Globe className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 ml-1 mr-1 shrink-0" />
+              <button
+                onClick={() => setLang('en')}
+                className={`px-2 py-1 rounded-lg font-medium transition-all ${
+                  lang === 'en'
+                    ? 'bg-white dark:bg-indigo-600 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+                }`}
+              >
+                EN
+              </button>
+              <button
+                onClick={() => setLang('id')}
+                className={`px-2 py-1 rounded-lg font-medium transition-all ${
+                  lang === 'id'
+                    ? 'bg-white dark:bg-indigo-600 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+                }`}
+              >
+                ID
+              </button>
+            </div>
+
+            {/* Dark / Light Toggle */}
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={toggleTheme}
+              className="w-9 h-9 rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm"
+              title={theme === 'dark' ? t('themeLight') : t('themeDark')}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-indigo-600" />
+              )}
+            </motion.button>
           </div>
         </div>
       </div>
