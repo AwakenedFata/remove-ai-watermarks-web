@@ -22,8 +22,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-18 sm:h-20">
-          {/* Logo & Brand (Dual-mode Wordmark) */}
+        <div className="flex items-center justify-between h-20 sm:h-24">
+          {/* Logo & Brand (Dual-mode Wordmark - Enlarged) */}
           <div className="flex items-center">
             <motion.img
               key={theme}
@@ -34,12 +34,12 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               whileTap={{ scale: 0.98 }}
               src={logoSrc}
               alt="AI Watermark Remover"
-              className="h-11 sm:h-13 md:h-14 w-auto max-w-[240px] sm:max-w-[320px] object-contain cursor-pointer select-none py-1"
+              className="h-14 sm:h-16 md:h-18 lg:h-20 w-auto max-w-[300px] sm:max-w-[420px] object-contain cursor-pointer select-none py-1"
             />
           </div>
 
-          {/* Desktop Navigation Tabs */}
-          <nav className="hidden sm:flex items-center space-x-1 bg-slate-100 dark:bg-slate-900/90 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+          {/* Desktop Navigation Tabs - Seamless Filled Segmented Bar */}
+          <nav className="hidden sm:inline-flex items-stretch bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden p-0 shadow-inner">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -47,21 +47,14 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`relative flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                  className={`relative flex items-center space-x-2 px-5 py-3 text-xs sm:text-sm font-bold transition-all select-none ${
                     isActive
-                      ? 'text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
                   }`}
                 >
-                  {isActive && (
-                    <motion.div
-                      layoutId="desktopNavPill"
-                      className="absolute inset-0 bg-indigo-600 rounded-xl"
-                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                    />
-                  )}
-                  <Icon className="w-4 h-4 relative z-10" />
-                  <span className="relative z-10">{item.label}</span>
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="whitespace-nowrap">{item.label}</span>
                 </button>
               );
             })}
