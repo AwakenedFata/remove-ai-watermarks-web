@@ -132,7 +132,7 @@ def build_smart_watermark_mask(image_bgr: np.ndarray, boxes: List[Tuple[int, int
     """
     Intelligently generates a stroke-level mask inside bounding boxes.
     Instead of wiping out the entire solid rectangle (which would delete underlying subjects like cars or faces),
-    it isolates the high-contrast watermark text glyphs, shadows, and outlines, preserving the background.
+    it isolates the high-contrast watermark text glyphs and their shadows, preserving the background.
     """
     import cv2
     h, w = image_bgr.shape[:2]
@@ -144,44 +144,46 @@ def build_smart_watermark_mask(image_bgr: np.ndarray, boxes: List[Tuple[int, int
         if x1 <= x0 or y1 <= y0:
             continue
 
-        # If box is very small (< 28x28), treat as solid mark
-        if (x1 - x0) < 28 or (y1 - y0) < 28:
+        # If box is very small (< 24x24), treat as solid mark
+        if (x1 - x0) < 24 or (y1 - y0) < 24:
             mask[y0:y1, x0:x1] = 255
             continue
 
         roi = image_bgr[y0:y1, x0:x1]
         gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
 
-        # 1. Top-hat & Black-hat for bright and dark text strokes
-        kernel_hat = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
-        top_hat = cv2.morphologyEx(gray, cv2.MORPH_TOPHAT, kernel_hat)
-        black_hat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, kernel_hat)
+        # 1. Detect bright watermark text (like white/bright letters with shadow)
+        p88 = float(np.percentile(gray, 88))
+        bright_cand = (gray >= p88).astype(np.uint8) * 255 if p88 > 140 else np.zeros_like(gray)
 
-        # 2. Morphological gradient for sharp text outline edges
-        grad = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)))
+        # 2. Detect dark watermark text (for black/dark text on bright background)
+        p12 = float(np.percentile(gray, 12))
+        dark_cand = (gray <= p12).astype(np.uint8) * 255 if p12 < 80 else np.zeros_like(gray)
 
-        # 3. Direct bright threshold for white watermark characters
-        bright_white = (gray > 165).astype(np.uint8) * 255
+        # Candidate text glyph pixels
+        cand_mask = cv2.bitwise_or(bright_cand, dark_cand)
 
-        # Combine text signals
-        combined = cv2.bitwise_or(top_hat, black_hat)
-        combined = cv2.bitwise_or(combined, grad)
-        _, thresh = cv2.threshold(combined, 22, 255, cv2.THRESH_BINARY)
-        stroke_binary = cv2.bitwise_or(thresh, bright_white)
-
-        # 4. Remove small noise spots (salt-and-pepper)
-        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(stroke_binary, 8)
-        clean_roi_mask = np.zeros_like(stroke_binary)
+        # 3. Filter connected components: real text glyphs have a minimum height and area,
+        # whereas gravel on asphalt road or sensor noise has tiny area (< 8px) or microscopic height (< 6px).
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(cand_mask, 8)
+        clean_glyphs = np.zeros_like(cand_mask)
         for i in range(1, num_labels):
             area = stats[i, cv2.CC_STAT_AREA]
-            if area >= 10:
-                clean_roi_mask[labels == i] = 255
+            comp_h = stats[i, cv2.CC_STAT_HEIGHT]
+            # Letters must have reasonable height and area without filling the whole box
+            if comp_h >= 8 and area >= 10 and (comp_h / (y1 - y0)) < 0.95:
+                clean_glyphs[labels == i] = 255
 
-        # 5. Dilate strokes by 4px to cover anti-aliasing and soft drop shadows
-        kernel_d = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-        dilated = cv2.dilate(clean_roi_mask, kernel_d, iterations=1)
-
-        mask[y0:y1, x0:x1] = dilated
+        # 4. If clean_glyphs captured text (2% to 65% of the ROI):
+        # Dilate by 3-4 pixels with an ellipse to cover the drop shadow and anti-aliased font edges.
+        glyph_coverage = np.count_nonzero(clean_glyphs) / clean_glyphs.size
+        if 0.02 <= glyph_coverage <= 0.65:
+            kernel_d = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+            dilated = cv2.dilate(clean_glyphs, kernel_d, iterations=1)
+            mask[y0:y1, x0:x1] = dilated
+        else:
+            # Fallback if text couldn't be cleanly separated (e.g. solid badge/logo)
+            mask[y0:y1, x0:x1] = 255
 
     return mask
 
